@@ -35,7 +35,7 @@ def find_possible_sRNA(srna_max_length, tss_df, term_df):
     for tss_row_index in range(0, tss_df_len, 1):
         sys.stdout.flush()
         sys.stdout.write("\r" + f"Progress: {round(tss_row_index / tss_df_len * 100, 2)}% | " +
-                         f"{srna_count } possible sRNAs counted ")
+                         f"{srna_count } possible sRNAs counted      ...")
         time.sleep(1)
         for term_row_index in range(0, term_df_len, 1):
             if tss_df.iloc[tss_row_index, 0] == term_df.iloc[term_row_index, 0] and \
@@ -73,6 +73,6 @@ else:
     srna_gff_str = find_possible_sRNA(srna_max_length, tss_df, term_df)
     print("\nWriting output to file")
     outfile = open(output_file_path, "w")
-    outfile.write(f"###gff-version 3\n{srna_gff_str}")
+    outfile.write(f"###gff-version 3\n{srna_gff_str}\n###")
     outfile.close()
     print("DONE")
