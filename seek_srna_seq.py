@@ -26,6 +26,7 @@ def build_df_form_gff(path):
 # 7 = dot2
 # 8 = attributes
 
+
 def find_possible_sRNA(srna_max_length, tss_df, term_df):
     r_srna_gff_str = ""
     srna_count = 0
@@ -38,10 +39,11 @@ def find_possible_sRNA(srna_max_length, tss_df, term_df):
                     term_df.iloc[term_row_index, 3] > tss_df.iloc[tss_row_index, 4] and \
                     (term_df.iloc[term_row_index, 4] - tss_df.iloc[tss_row_index, 3]) <= srna_max_length:
                 srna_count += 1
-                sys.stdout.write('\r' + f"Progress: {round(tss_row_index / tss_df_len * 100, 2)}%, " +
-                                 f"Possible sRNAs found: {srna_count}")
-                time.sleep(1)
                 sys.stdout.flush()
+                sys.stdout.write("\r" + f"Progress: {round(tss_row_index / tss_df_len * 100, 2)}% | " +
+                                 "{srna_count } possible sRNAs counted ")
+                time.sleep(1)
+
                 r_srna_gff_str += f"{tss_df.iloc[tss_row_index, 0]}\t" + \
                                   f"sRNA_Seq_Seeker\t" + \
                                   f"possible_sRNA_seq\t" + \
@@ -55,6 +57,7 @@ def find_possible_sRNA(srna_max_length, tss_df, term_df):
                                   f"seq_len={term_df.iloc[term_row_index, 4] - tss_df.iloc[tss_row_index, 3]};" + \
                                   f"matched_tss={parse_attributes(tss_df.iloc[term_row_index, 8])['Name']};" + \
                                   f"matched_terminator={parse_attributes(term_df.iloc[term_row_index, 8])['Name']}\n"
+    sys.stdout.write("\r" + f"Progress 100% with total {srna_count} possible sRNAs could be found")
     return r_srna_gff_str
 
 
@@ -67,7 +70,7 @@ else:
     output_file_path = sys.argv[3]
     srna_max_length = int(sys.argv[4])
 
-    print(f"Seeking for possible sRNA at sequence length of {srna_max_length}")
+    print(f"Seeking for possible sRNA at sequence length of {srna_max_length} nucleotides")
     srna_gff_str = find_possible_sRNA(srna_max_length, tss_df, term_df)
     print("\nWriting output to file")
     outfile = open(output_file_path, "w")
