@@ -33,17 +33,16 @@ def find_possible_sRNA(srna_max_length, tss_df, term_df):
     tss_df_len = len(tss_df.index)
     term_df_len = len(term_df.index)
     for tss_row_index in range(0, tss_df_len, 1):
+        sys.stdout.flush()
+        sys.stdout.write("\r" + f"Progress: {round(tss_row_index / tss_df_len * 100, 2)}% | " +
+                         f"{srna_count } possible sRNAs counted ")
+        time.sleep(1)
         for term_row_index in range(0, term_df_len, 1):
             if tss_df.iloc[tss_row_index, 0] == term_df.iloc[term_row_index, 0] and \
                     tss_df.iloc[tss_row_index, 6] == term_df.iloc[term_row_index, 6] and \
                     term_df.iloc[term_row_index, 3] > tss_df.iloc[tss_row_index, 4] and \
                     (term_df.iloc[term_row_index, 4] - tss_df.iloc[tss_row_index, 3]) <= srna_max_length:
                 srna_count += 1
-                sys.stdout.flush()
-                sys.stdout.write("\r" + f"Progress: {round(tss_row_index / tss_df_len * 100, 2)}% | " +
-                                 "{srna_count } possible sRNAs counted ")
-                time.sleep(1)
-
                 r_srna_gff_str += f"{tss_df.iloc[tss_row_index, 0]}\t" + \
                                   f"sRNA_Seq_Seeker\t" + \
                                   f"possible_sRNA_seq\t" + \
@@ -69,7 +68,7 @@ else:
     term_df = build_df_form_gff(sys.argv[2])
     output_file_path = sys.argv[3]
     srna_max_length = int(sys.argv[4])
-
+    print("\n\n--- sRNA Seq Seeker ---\n\n")
     print(f"Seeking for possible sRNA at sequence length of {srna_max_length} nucleotides")
     srna_gff_str = find_possible_sRNA(srna_max_length, tss_df, term_df)
     print("\nWriting output to file")
