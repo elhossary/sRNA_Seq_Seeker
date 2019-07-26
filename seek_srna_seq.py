@@ -30,7 +30,7 @@ def find_possible_sRNA(srna_max_length, tss_arr, term_arr):
     for tss_index, tss_row in enumerate(tss_arr):
         sys.stdout.flush()
         sys.stdout.write("\r" + f"Progress: {round(tss_index / tss_arr_len * 100, 2)}% | " +
-                         f"{srna_count } possible sRNAs counted      ...")
+                         f"{srna_count } possible sRNAs found      ...")
         for term_index, term_row in enumerate(term_arr):
             if tss_row[0] == term_row[0]:
                 if tss_row[6] == term_row[6] == "+":
@@ -38,6 +38,7 @@ def find_possible_sRNA(srna_max_length, tss_arr, term_arr):
                             (term_row[4] - tss_row[3]) <= srna_max_length:
                         srna_count += 1
                         r_srna_gff_str += \
+                            f"{tss_row[0]}\t" + \
                             f"sRNA_Seq_Seeker\t" + \
                             f"possible_sRNA_seq\t" + \
                             f"{tss_row[3]}\t" + \
@@ -55,6 +56,7 @@ def find_possible_sRNA(srna_max_length, tss_arr, term_arr):
                             (tss_row[4] - term_row[3]) <= srna_max_length:
                         srna_count += 1
                         r_srna_gff_str += \
+                            f"{tss_row[0]}\t" + \
                             f"sRNA_Seq_Seeker\t" + \
                             f"possible_sRNA_seq\t" + \
                             f"{term_row[3]}\t" + \
