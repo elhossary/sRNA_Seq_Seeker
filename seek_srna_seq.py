@@ -1,19 +1,15 @@
 # Author: Muhammad Elhossary | elhossary@zbmed.de
-import pandas as pd
 import sys
-import time
+from numpy import genfromtxt
+
 
 def parse_attributes(attr_str):
     return dict(item.split("=") for item in attr_str.split(";"))
 
-def build_df_form_gff(path):
-    in_file = open(path, "r")
-    r_df = pd.read_csv(in_file, sep="\t", comment="#", header=None)
-    in_file.close()
-    r_df[3] = pd.to_numeric(r_df[3], downcast='integer')
-    r_df[4] = pd.to_numeric(r_df[4], downcast='integer')
-    r_df.sort_values(by=[3])
-    return r_df
+
+def build_arr_form_gff(path):
+    data_arr = genfromtxt(path, delimiter="\t", comments="#", dtype=None, encoding=None)
+    return data_arr
 
 # Number of Column names
 # 0 = accession
@@ -27,35 +23,50 @@ def build_df_form_gff(path):
 # 8 = attributes
 
 
-def find_possible_sRNA(srna_max_length, tss_df, term_df):
+def find_possible_sRNA(srna_max_length, tss_arr, term_arr):
     r_srna_gff_str = ""
     srna_count = 0
-    tss_df_len = len(tss_df.index)
-    term_df_len = len(term_df.index)
-    for tss_row_index in range(0, tss_df_len, 1):
+    tss_arr_len = len(tss_arr)
+    for tss_index, tss_row in enumerate(tss_arr):
         sys.stdout.flush()
-        sys.stdout.write("\r" + f"Progress: {round(tss_row_index / tss_df_len * 100, 2)}% | " +
+        sys.stdout.write("\r" + f"Progress: {round(tss_index / tss_arr_len * 100, 2)}% | " +
                          f"{srna_count } possible sRNAs counted      ...")
-        time.sleep(1)
-        for term_row_index in range(0, term_df_len, 1):
-            if tss_df.iloc[tss_row_index, 0] == term_df.iloc[term_row_index, 0] and \
-                    tss_df.iloc[tss_row_index, 6] == term_df.iloc[term_row_index, 6] and \
-                    term_df.iloc[term_row_index, 3] > tss_df.iloc[tss_row_index, 4] and \
-                    (term_df.iloc[term_row_index, 4] - tss_df.iloc[tss_row_index, 3]) <= srna_max_length:
-                srna_count += 1
-                r_srna_gff_str += f"{tss_df.iloc[tss_row_index, 0]}\t" + \
-                                  f"sRNA_Seq_Seeker\t" + \
-                                  f"possible_sRNA_seq\t" + \
-                                  f"{tss_df.iloc[tss_row_index, 4]}\t" + \
-                                  f"{term_df.iloc[term_row_index, 4]}\t" + \
-                                  f".\t" + \
-                                  f"{term_df.iloc[term_row_index, 6]}\t" + \
-                                  f".\t" + \
-                                  f"id=possible_srna{srna_count};" + \
-                                  f"name=possible_srna{srna_count};" + \
-                                  f"seq_len={term_df.iloc[term_row_index, 4] - tss_df.iloc[tss_row_index, 3]};" + \
-                                  f"matched_tss={parse_attributes(tss_df.iloc[term_row_index, 8])['Name']};" + \
-                                  f"matched_terminator={parse_attributes(term_df.iloc[term_row_index, 8])['Name']}\n"
+        for term_index, term_row in enumerate(term_arr):
+            if tss_row[0] == term_row[0]:
+                if tss_row[6] == term_row[6] == "+":
+                    if tss_row[4] < term_row[3] and \
+                            (term_row[4] - tss_row[3]) <= srna_max_length:
+                        srna_count += 1
+                        r_srna_gff_str += \
+                            f"sRNA_Seq_Seeker\t" + \
+                            f"possible_sRNA_seq\t" + \
+                            f"{tss_row[3]}\t" + \
+                            f"{term_row[4]}\t" + \
+                            f".\t" + \
+                            f"{term_row[6]}\t" + \
+                            f".\t" + \
+                            f"id=possible_srna{srna_count};" + \
+                            f"name=possible_srna{srna_count};" + \
+                            f"seq_len={term_row[4] - tss_row[3]};" + \
+                            f"matched_tss={parse_attributes(term_row[8])['Name']};" + \
+                            f"matched_terminator={parse_attributes(term_row[8])['Name']}\n"
+                if tss_row[6] == term_row[6] == "-":
+                    if term_row[4] < tss_row[3] and \
+                            (tss_row[4] - term_row[3]) <= srna_max_length:
+                        srna_count += 1
+                        r_srna_gff_str += \
+                            f"sRNA_Seq_Seeker\t" + \
+                            f"possible_sRNA_seq\t" + \
+                            f"{term_row[3]}\t" + \
+                            f"{tss_row[4]}\t" + \
+                            f".\t" + \
+                            f"{term_row[6]}\t" + \
+                            f".\t" + \
+                            f"id=possible_srna{srna_count};" + \
+                            f"name=possible_srna{srna_count};" + \
+                            f"seq_len={tss_row[4] - term_row[3]};" + \
+                            f"matched_tss={parse_attributes(term_row[8])['Name']};" + \
+                            f"matched_terminator={parse_attributes(term_row[8])['Name']}\n"
     sys.stdout.write("\r" + f"Progress 100% with total {srna_count} possible sRNAs could be found")
     return r_srna_gff_str
 
@@ -64,13 +75,13 @@ if sys.argv[1] is None or sys.argv[2] is None or sys.argv[3] is None or int(sys.
     print("check your inputs")
     exit()
 else:
-    tss_df = build_df_form_gff(sys.argv[1])
-    term_df = build_df_form_gff(sys.argv[2])
+    tss_arr = build_arr_form_gff(sys.argv[1])
+    term_arr = build_arr_form_gff(sys.argv[2])
     output_file_path = sys.argv[3]
     srna_max_length = int(sys.argv[4])
     print("\n\n--- sRNA Seq Seeker ---\n\n")
     print(f"Seeking for possible sRNA at sequence length of {srna_max_length} nucleotides")
-    srna_gff_str = find_possible_sRNA(srna_max_length, tss_df, term_df)
+    srna_gff_str = find_possible_sRNA(srna_max_length, tss_arr, term_arr)
     print("\nWriting output to file")
     outfile = open(output_file_path, "w")
     outfile.write(f"###gff-version 3\n{srna_gff_str}\n###")
