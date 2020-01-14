@@ -15,15 +15,13 @@ def main():
     args = parser.parse_args()
     tss_arr = build_arr_form_gff(glob.glob(args.tss_in)[0])
     term_arr = build_arr_form_gff(glob.glob(args.term_in)[0])
-    output_file_path = glob.glob(args.gff_out)[0]
-    srna_max_length = int(args.max_len)
-    srna_min_length = int(args.min_len)
+
     print("\n\n--- sRNA Seq Seeker ---\n\n")
-    print(f"Seeking for possible sRNA at sequences terminated at maximum length of {srna_max_length}"
-          f" and length between tss and terminator not shorter that {srna_min_length}")
-    srna_gff_str = find_possible_sRNA(srna_max_length, tss_arr, term_arr, srna_min_length)
+    print(f"Seeking for possible sRNA at sequences terminated at maximum length of {args.max_len}"
+          f" and length between tss and terminator not shorter that {args.min_len}")
+    srna_gff_str = find_possible_sRNA(args.max_len, tss_arr, term_arr, args.min_len)
     print("\nWriting output to file")
-    outfile = open(output_file_path, "w")
+    outfile = open(glob.glob(args.gff_out)[0], "w")
     outfile.write(f"###gff-version 3\n{srna_gff_str}###")
     outfile.close()
     print("DONE")
