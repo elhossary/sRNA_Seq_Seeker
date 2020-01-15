@@ -113,9 +113,8 @@ def merge_overlaps(srna_gff_str):
             merge_interval_lists(sran_gff_df[(sran_gff_df['accession'] == acc) & (sran_gff_df['strand'] == "-")]
                                  .loc[:, ['start', 'end']].sort_values(by=['start']).values.tolist())
     strand_func = lambda x: "+" if "_f" in x else "-"
-
+    strand_letter_func = lambda x: "F" if "+" in x else "R"
     for acc in accession_list:
-
         for dict_key in df_dict.keys():
             if dict_key == f"{acc}_f" or dict_key == f"{acc}_r":
                 for loc in df_dict[dict_key]:
@@ -140,8 +139,10 @@ def merge_overlaps(srna_gff_str):
             last_accession = row['accession']
             srna_count = 0
         srna_count += 1
-        ret_sran_gff_df.at[index, 'attributes'] = f"id={row['accession']}_possible_srna_{srna_count};" + \
-                                                  f"name={row['accession']}_possible_srna_{srna_count};" + \
+        ret_sran_gff_df.at[index, 'attributes'] = f"id={row['accession']}_" + \
+                                                  f"{strand_letter_func(row['strand'])}_possible_srna_{srna_count};" + \
+                                                  f"name={row['accession']}_" + \
+                                                  f"{strand_letter_func(row['strand'])}_possible_srna_{srna_count};" + \
                                                   f"seq_len={row['end'] - row['start']}"
     ret_srna_gff_str = ret_sran_gff_df.to_csv(sep="\t", index=False, header=False)
     print(f"Total sRNAs after merge: {ret_sran_gff_df.shape[0]}")
