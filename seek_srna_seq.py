@@ -6,6 +6,7 @@ import glob
 import os
 from io import StringIO
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def main():
@@ -19,10 +20,16 @@ def main():
     args = parser.parse_args()
     tss_arr = build_arr_form_gff(glob.glob(args.tss_in)[0])
     term_arr = build_arr_form_gff(glob.glob(args.term_in)[0])
-
+    output_base_name = os.path.basename(args.gff_out)
+    output_path = os.path.abspath(os.path.join(args.gff_out, os.pardir))
     print("\n\n--- sRNA Seq Seeker ---\n\n")
     print(f"Seeking for possible sRNA at sequences at length between {args.min_len} and {args.max_len}")
-    srna_gff_str = find_possible_sRNA(args.max_len, tss_arr, term_arr, args.min_len)
+    srna_gff_str, term_matching_tss_counts, tss_matching_term_counts \
+        = find_possible_sRNA(args.max_len, tss_arr, term_arr, args.min_len)
+    plot_hist(term_matching_tss_counts, "How many TSSs are connected to each terminator",
+              f"{output_path}/plot_TSS_to_Term_{output_base_name}.png")
+    plot_hist(tss_matching_term_counts, "How many terminators are connected to each TSS",
+              f"{output_path}/plot_Term_to_TSS_{output_base_name}.png")
     print("\nWriting output to file")
     outfile = open(args.gff_out, "w")
     outfile.write(f"###gff-version 3\n{srna_gff_str}###")
@@ -30,8 +37,7 @@ def main():
     if args.merge_overlaps:
         srna_gff_str = merge_overlaps(srna_gff_str)
         print("\nWriting merged output to file")
-        outfile = open(f"{os.path.abspath(os.path.join(glob.glob(args.gff_out)[0], os.pardir))}/" +
-                       f"merged_{os.path.basename(glob.glob(args.gff_out)[0])}", "w")
+        outfile = open(f"{output_path}/merged_{output_base_name}", "w")
         outfile.write(f"###gff-version 3\n{srna_gff_str}###")
         outfile.close()
     print("DONE")
@@ -52,8 +58,10 @@ def find_possible_sRNA(srna_max_length, tss_arr, term_arr, srna_min_length):
     r_srna_gff_str = ""
     srna_count = 0
     tss_arr_len = len(tss_arr)
-
+    tss_matching_term_counts = []
+    term_matching_tss_counts = []
     for tss_index, tss_row in enumerate(tss_arr):
+        tss_matching_term_counts.append(0)
         sys.stdout.flush()
         sys.stdout.write("\r" + f"Progress: {round(tss_index / tss_arr_len * 100, 2)}% | " +
                          f"{srna_count} possible sRNAs found      ...")
@@ -65,6 +73,7 @@ def find_possible_sRNA(srna_max_length, tss_arr, term_arr, srna_min_length):
                             (term_row[4] - tss_row[3]) <= srna_max_length and \
                             srna_min_length <= (term_row[3] - tss_row[3]):
                         srna_count += 1
+                        tss_matching_term_counts[-1] += 1
                         r_srna_gff_str += \
                             f"{tss_row[0]}\t" + \
                             f"sRNA_Seq_Seeker\t" + \
@@ -85,6 +94,7 @@ def find_possible_sRNA(srna_max_length, tss_arr, term_arr, srna_min_length):
                     if term_row[4] < tss_row[3] and \
                             (tss_row[4] - term_row[3]) <= srna_max_length and \
                             srna_min_length <= (tss_row[3] - term_row[3]):
+                        tss_matching_term_counts[-1] += 1
                         srna_count += 1
                         r_srna_gff_str += \
                             f"{tss_row[0]}\t" + \
@@ -100,10 +110,42 @@ def find_possible_sRNA(srna_max_length, tss_arr, term_arr, srna_min_length):
                             f"seq_len={tss_row[4] - term_row[3]};" + \
                             f"matched_tss={parse_attributes(tss_row[8])['id']};" + \
                             f"matched_terminator={parse_attributes(term_row[8])['id']}\n"
-
+    for term_index, term_row in enumerate(term_arr):
+        term_matching_tss_counts.append(0)
+        for tss_index, tss_row in enumerate(tss_arr):
+            if tss_row[0] == term_row[0]:
+                if tss_row[6] == term_row[6] == "+":
+                    if tss_row[4] < term_row[3] and \
+                            (term_row[4] - tss_row[3]) <= srna_max_length and \
+                            srna_min_length <= (term_row[3] - tss_row[3]):
+                        term_matching_tss_counts[-1] += 1
+                if tss_row[6] == term_row[6] == "-":
+                    if term_row[4] < tss_row[3] and \
+                            (tss_row[4] - term_row[3]) <= srna_max_length and \
+                            srna_min_length <= (tss_row[3] - term_row[3]):
+                        term_matching_tss_counts[-1] += 1
     sys.stdout.write("\r" + f"Progress 100% with total {srna_count} possible sRNAs could be found")
     print("\n")
-    return r_srna_gff_str
+    return r_srna_gff_str, term_matching_tss_counts, tss_matching_term_counts
+
+
+def plot_hist(list_in, title, output_file):
+    distinct_list = []
+    zero_counts = list_in.count(0)
+    list_in = [i for i in list_in if i != 0]
+    for i in list_in:
+        if i not in distinct_list and i != 0:
+            distinct_list.append(i)
+    distinct_list.sort()
+    bins = len(distinct_list)
+    fig = plt.figure()
+    plt.hist(list_in, bins=bins, rwidth=0.5)
+    plt.title(f"{title}\nZero connections count: {zero_counts}")
+    plt.xlabel(f"Connections number")
+    plt.ylabel("Frequency")
+    plt.xticks(range(distinct_list[0], distinct_list[-1] + 1, 1))
+    plt.grid(True)
+    fig.savefig(output_file)
 
 
 def merge_overlaps(srna_gff_str):
@@ -125,7 +167,6 @@ def merge_overlaps(srna_gff_str):
         for dict_key in df_dict.keys():
             if dict_key == f"{acc}_f" or dict_key == f"{acc}_r":
                 for loc in df_dict[dict_key]:
-
                     ret_srna_gff_str += \
                         f"{acc}\t" + \
                         f"sRNA_Seq_Seeker\t" + \
@@ -176,9 +217,5 @@ def parse_attributes(attr_str):
 def build_arr_form_gff(path):
     data_arr = genfromtxt(path, delimiter="\t", comments="#", dtype=None, encoding=None)
     return data_arr
-
-
-
-
 
 main()
