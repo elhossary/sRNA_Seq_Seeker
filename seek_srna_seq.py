@@ -3,6 +3,7 @@ import sys
 from numpy import genfromtxt
 import argparse
 import glob
+import os
 from io import StringIO
 import pandas as pd
 
@@ -22,12 +23,17 @@ def main():
     print("\n\n--- sRNA Seq Seeker ---\n\n")
     print(f"Seeking for possible sRNA at sequences at length between {args.min_len} and {args.max_len}")
     srna_gff_str = find_possible_sRNA(args.max_len, tss_arr, term_arr, args.min_len)
-    if args.merge_overlaps:
-        srna_gff_str = merge_overlaps(srna_gff_str)
     print("\nWriting output to file")
     outfile = open(args.gff_out, "w")
     outfile.write(f"###gff-version 3\n{srna_gff_str}###")
     outfile.close()
+    if args.merge_overlaps:
+        srna_gff_str = merge_overlaps(srna_gff_str)
+        print("\nWriting merged output to file")
+        outfile = open(f"{os.path.abspath(os.path.join(glob.glob(args.gff_out)[0], os.pardir))}/" +
+                       f"merged_{os.path.basename(glob.glob(args.gff_out)[0])}", "w")
+        outfile.write(f"###gff-version 3\n{srna_gff_str}###")
+        outfile.close()
     print("DONE")
 
 
@@ -96,6 +102,7 @@ def find_possible_sRNA(srna_max_length, tss_arr, term_arr, srna_min_length):
                             f"matched_terminator={parse_attributes(term_row[8])['id']}\n"
 
     sys.stdout.write("\r" + f"Progress 100% with total {srna_count} possible sRNAs could be found")
+    print("\n")
     return r_srna_gff_str
 
 
