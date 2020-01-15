@@ -115,11 +115,11 @@ def merge_overlaps(srna_gff_str):
     strand_func = lambda x: "+" if "_f" in x else "-"
 
     for acc in accession_list:
-        srna_count = 0
+
         for dict_key in df_dict.keys():
             if dict_key == f"{acc}_f" or dict_key == f"{acc}_r":
                 for loc in df_dict[dict_key]:
-                    srna_count += 1
+
                     ret_srna_gff_str += \
                         f"{acc}\t" + \
                         f"sRNA_Seq_Seeker\t" + \
@@ -129,11 +129,20 @@ def merge_overlaps(srna_gff_str):
                         f".\t" + \
                         f"{strand_func(dict_key)}\t" + \
                         f".\t" + \
-                        f"id={dict_key}_possible_srna_{srna_count};" + \
-                        f"name={dict_key}_possible_srna_{srna_count};" + \
-                        f"seq_len={loc[1] - loc[0]}\n"
+                        f".\n"
     ret_sran_gff_df = pd.read_csv(StringIO(ret_srna_gff_str), names=col_names, sep="\t", comment="#")
     ret_sran_gff_df = ret_sran_gff_df.sort_values(by=['accession', 'start'])
+    srna_count = 0
+    last_accession = ""
+    # Writing attributes
+    for index, row in ret_sran_gff_df.iterrows():
+        if last_accession != row['accession']:
+            last_accession = row['accession']
+            srna_count = 0
+        srna_count += 1
+        ret_sran_gff_df.at[index, 'attributes'] = f"id={row['accession']}_possible_srna_{srna_count};" + \
+                                                  f"name={row['accession']}_possible_srna_{srna_count};" + \
+                                                  f"seq_len={row['end'] - row['start']}"
     ret_srna_gff_str = ret_sran_gff_df.to_csv(sep="\t", index=False, header=False)
     print(f"Total sRNAs after merge: {ret_sran_gff_df.shape[0]}")
     return ret_srna_gff_str
